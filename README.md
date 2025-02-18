@@ -1,8 +1,8 @@
-# mai8-ITproj
+# mai8-ITproj | LivnyOffice
 > ####  [✈️ МАИ, Разработка IT-проектов на Python](https://docs.google.com/spreadsheets/d/1j8NmQha54NWWp1tUvQ3xcC5IxFxr2EbhJ9tzzxYyuFE/edit?gid=235870004#gid=235870004&range=D1 "МАИ, Разработка IT-проектов на Python")
 
 ## Web-сервис бронирования переговорных комнат в офисе
-
+###
 Оценка **3**:
 **Создать веб-сервис с базовыми функциями для бронирования переговорных комнат в офисе (MVP)**
 Функциональные требования:
