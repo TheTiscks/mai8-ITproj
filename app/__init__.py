@@ -1,7 +1,9 @@
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
-
-#import os
+from app.models.user import User
+from app.models.room import Room
+from app.models.user import Booking
+import os
 
 # Python 3.13   Flask 3.1.0
 
