@@ -1,0 +1,1 @@
+app/models/ should be revised by Zerg0n4ik after flaskskeleton is finished
