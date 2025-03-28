@@ -9,7 +9,7 @@ import os   # just in case
 db = SQLAlchemy()
 
 def create_app():
-    app = Flask(__name__)   # создание экземпляра Flask-приложения
+    app = Flask(__name__, template_folder="templates")  # создание экземпляра Flask-приложения
     app.config.from_object("config.Config")
     db.init_app(app) # database initialisation
     from app.models.user import User
