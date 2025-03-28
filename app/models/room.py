@@ -5,7 +5,7 @@ class Room(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
-    capacity = db.Column(db.Integer), nullable=False)
+    capacity = db.Column(db.Integer, nullable=False)
     equipment = db.Column(db.String(200))  # Например: "Проектор, Доска"
     photo = db.Column(db.String(200))  # Путь к изображению
 
