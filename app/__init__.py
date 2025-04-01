@@ -33,3 +33,12 @@ def load_user(user_id):
     from app.models.user import User
     return User.query.get(int(user_id))
 
+@auth_bp.route("/login")
+def login():
+    form = LoginForm()
+    return render_template("auth/login.html", form=form)
+
+@auth_bp.route("/register")
+def register():
+    form = RegistrationForm()
+    return render_template("auth/register.html", form=form)
