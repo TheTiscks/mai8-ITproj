@@ -16,9 +16,6 @@ def create_app():
     app.config.from_object("config.Config")
     db.init_app(app) # database initialisation
     login_manager.init_app(app)
-    #from app.models.user import User
-    #from app.models.room import Room
-    #from app.models.booking import Booking
     from app.routes import auth_bp, main_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
