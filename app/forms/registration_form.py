@@ -37,3 +37,4 @@ class LoginForm(FlaskForm):
     ], render_kw={"placeholder": "••••••••"})
 
     submit = SubmitField('Войти') # Мы, русские, не обманываем друг друга и пишем по-русски
+    #коммент
