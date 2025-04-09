@@ -1,33 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: rgba(0, 0, 0, 0.87);
+  background-color: #f9fafb; /* Лёгкий фон для всей страницы */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
 body {
   margin: 0;
+  padding: 0;
   display: flex;
-  place-items: center;
-  min-width: 320px;
+  justify-content: center;
+  align-items: flex-start;
   min-height: 100vh;
+  background-color: #f9fafb;
 }
 
 h1 {
@@ -42,27 +38,67 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.room-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.room-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.room-card p {
+  color: #4b5563;
+}
+
+.room-card button {
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.room-card button:hover {
+  background-color: #2563eb;
+}
+
+@media (max-width: 640px) {
+  body {
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
   }
-  a:hover {
-    color: #747bff;
+
+  .room-card {
+    width: 100%;
+    margin-bottom: 1.5rem;
   }
-  button {
-    background-color: #f9f9f9;
-  }
+}
+
+.room-card button {
+  color: white !important;
+}
+/* Принудительно задаем белый цвет текста для кнопок внутри контейнера RoomDetails */
+.container button {
+  color: white !important;
 }
