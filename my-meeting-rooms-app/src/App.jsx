@@ -1,22 +1,18 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
-import MeetingRooms from "./components/MeetingRooms";
+import Header from "./components/Header";
+import MainPage from "./components/MainPage";
+import RegistrationForm from "./components/RegistrationForm";
 import RoomDetails from "./components/RoomDetails";
 
 function App() {
   return (
-    <div>
-      {/* Фиксированная шапка */}
-      <header className="fixed top-0 left-0 w-full bg-blue-900 text-white py-4 shadow-md z-10">
-        <h1 className="text-center text-2xl font-bold">
-          Бронирование переговорных комнат
-        </h1>
-      </header>
-
-      {/* Основной контент с отступом сверху */}
+    <div className="bg-gray-50 min-h-screen">
+      <Header />
       <main className="pt-20">
         <Routes>
-          <Route path="/" element={<MeetingRooms />} />
+          <Route path="/" element={<MainPage />} />
+          <Route path="/register" element={<RegistrationForm />} />
           <Route path="/room/:id" element={<RoomDetails />} />
         </Routes>
       </main>
