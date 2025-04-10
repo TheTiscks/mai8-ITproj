@@ -1,19 +1,46 @@
-import { Link, useNavigate } from 'react-router-dom';
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
-export default function Login() {
+export default function LoginPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 border rounded-xl shadow">
-      <h2 className="text-2xl font-bold text-center mb-6">Вход</h2>
-      <form className="space-y-4">
-        <input type="email" placeholder="Email" className="w-full border p-2 rounded" />
-        <input type="password" placeholder="Пароль" className="w-full border p-2 rounded" />
-        <button className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Войти</button>
-      </form>
-      <div className="mt-4 text-center space-y-2">
-        <Link to="/register" className="text-blue-600 underline block">Ещё не зарегистрировались?</Link>
-        <button onClick={() => navigate('/')} className="text-gray-600 underline">Назад</button>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
+      <div className="text-2xl font-bold mb-6">LivnyOffice</div>
+      <div className="bg-white p-8 rounded shadow-md w-full max-w-sm">
+        <h2 className="text-xl font-semibold mb-4 text-center">Вход в систему</h2>
+        <form className="flex flex-col gap-4">
+          <input
+            type="email"
+            placeholder="Email"
+            className="border p-2 rounded"
+          />
+          <input
+            type="password"
+            placeholder="Пароль"
+            className="border p-2 rounded"
+          />
+          <button className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+            Войти
+          </button>
+        </form>
+        <div className="mt-4 text-sm text-center">
+          Ещё не зарегистрировались?{' '}
+          <button
+            className="text-blue-500 hover:underline"
+            onClick={() => navigate('/register')}
+          >
+            Зарегистрироваться
+          </button>
+        </div>
+        <div className="mt-2 text-center">
+          <button
+            className="text-gray-500 hover:underline text-sm"
+            onClick={() => navigate('/')}
+          >
+            Назад
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,23 +1,18 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
-import Header from "./components/Header";
-import HomePage from "./pages/HomePage";
-import RegisterPage from "./pages/RegisterPage";
-import RoomDetailPage from "./pages/RoomDetailPage";
-import RoomCard from "./components/RoomCard";
-import BackButton from "./components/BackButton";
+import { Route, Routes } from 'react-router-dom'
+import HomePage from './pages/HomePage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import RoomDetailPage from './pages/RoomDetailPage'
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/room/:id" element={<RoomDetails />} />
-      </Routes>
-    </Router>
-  );
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/rooms/:id" element={<RoomDetailPage />} />
+    </Routes>
+  )
 }
 
-export default App;
+export default App
