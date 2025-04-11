@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from "react";
-import DatePicker from "react-datepicker";
+import DatePicker, { registerLocale } from "react-datepicker";
+import ru from "date-fns/locale/ru"; // Импортируем русскую локаль
 import "react-datepicker/dist/react-datepicker.css";
+
+// Регистрируем русскую локаль
+registerLocale("ru", ru);
 
 export default function BookingModal({ onClose, onConfirm, bookedSlots = [] }) {
   const [selectedSlot, setSelectedSlot] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [availableSlots, setAvailableSlots] = useState([]);
 
-  // Генерируем все временные слоты с 09:00 до 20:00 (последний слот: 19:00–20:00)
+  // Генерируем все временные слоты с 09:00 до 20:00 (последний слот: 19:00 – 20:00)
   useEffect(() => {
     const allSlots = [];
     for (let hour = 9; hour < 20; hour++) {
@@ -15,7 +19,7 @@ export default function BookingModal({ onClose, onConfirm, bookedSlots = [] }) {
       const end = (hour + 1).toString().padStart(2, "0") + ":00";
       allSlots.push(`${start} - ${end}`);
     }
-    // Фильтруем слоты, исключая те, что уже заняты
+    // Фильтруем слоты, исключая занятые
     const freeSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
     setAvailableSlots(freeSlots);
   }, [bookedSlots]);
@@ -25,19 +29,18 @@ export default function BookingModal({ onClose, onConfirm, bookedSlots = [] }) {
       alert("Пожалуйста, выберите временной слот!");
       return;
     }
-    // Форматируем выбранную дату в строку (например, YYYY-MM-DD)
+    // Форматируем дату в формат YYYY-MM-DD
     const yyyy = selectedDate.getFullYear();
     const mm = (selectedDate.getMonth() + 1).toString().padStart(2, "0");
     const dd = selectedDate.getDate().toString().padStart(2, "0");
     const formattedDate = `${yyyy}-${mm}-${dd}`;
 
-    // Передаём выбранные дату и слот
     onConfirm({ date: formattedDate, slot: selectedSlot });
   };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      {/* Overlay с менее интенсивным затемнением (opacity 25%) */}
+      {/* Overlay с пониженной непрозрачностью */}
       <div
         className="absolute inset-0 bg-black opacity-25"
         onClick={onClose}
@@ -55,6 +58,7 @@ export default function BookingModal({ onClose, onConfirm, bookedSlots = [] }) {
             onChange={(date) => setSelectedDate(date)}
             minDate={new Date()}
             dateFormat="yyyy-MM-dd"
+            locale="ru"  // Устанавливаем русскую локаль
             className="w-full border border-gray-300 p-2 rounded"
           />
         </div>
