@@ -13,7 +13,7 @@ export default function RoomPage() {
     1: {
       name: 'Переговорная А',
       image: 'https://via.placeholder.com/600x300',
-      description: 'Светлая комната на 6 человек с окном и экраном.',
+      description: 'Светлая комната с окном и экраном.',
       capacity: 6,
     },
     2: {
