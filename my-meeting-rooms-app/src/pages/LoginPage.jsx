@@ -1,8 +1,12 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../UserContext"; // импорт вверху
+
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useUser();
+
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
