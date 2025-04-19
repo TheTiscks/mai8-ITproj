@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../UserContext"; // вверху
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const { login } = useUser(); // внутри компонента
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -71,7 +73,8 @@ export default function RegisterPage() {
 
       setSuccessMessage("Регистрация прошла успешно!");
       localStorage.setItem('token', data.access_token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      login(data.user); // сохраняем в контекст
+      setTimeout(() => navigate("/"), 2000);
 
       setTimeout(() => navigate("/"), 2000);
     } catch (err) {
