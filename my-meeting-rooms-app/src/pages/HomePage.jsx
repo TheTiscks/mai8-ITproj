@@ -14,7 +14,7 @@ export default function HomePage() {
         setLoading(false);
       })
       .catch(err => {
-        console.error("Ошибка при загрузке комнат:", err);
+        console.error("Ошибка при получении комнат:", err);
         setLoading(false);
       });
   }, []);
@@ -22,13 +22,11 @@ export default function HomePage() {
   return (
     <div>
       <Header />
-      <div className="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-24">
         {loading ? (
-          <div className="text-center col-span-full">Загрузка...</div>
-        ) : rooms.length > 0 ? (
-          rooms.map(room => <RoomCard key={room.id} room={room} />)
+          <div className="col-span-full text-center text-gray-600">Загрузка...</div>
         ) : (
-          <div className="text-center col-span-full">Нет доступных переговорок</div>
+          rooms.map(room => <RoomCard key={room.id} room={room} />)
         )}
       </div>
     </div>

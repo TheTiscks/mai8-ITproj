@@ -7,12 +7,21 @@ CORS(app)
 
 # Функция получения данных из базы
 def get_rooms():
-    conn = sqlite3.connect('instance/database.db')  # Убедись, что путь к базе корректен
+    conn = sqlite3.connect('instance/database.db')  # Убедись, что путь корректный
+    conn.row_factory = sqlite3.Row  # Чтобы можно было обращаться к колонкам по имени
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, description, image FROM rooms")
+    cursor.execute("SELECT id, name, capacity, equipment, photo FROM rooms")
     rooms = cursor.fetchall()
     conn.close()
-    return [{'id': row[0], 'name': row[1], 'description': row[2], 'image': row[3]} for row in rooms]
+    return [
+        {
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['equipment'],  # будем использовать оборудование как описание
+            'capacity': row['capacity'],
+            'image': row['photo']  # если это URL, фронт покажет; если путь — нужно отдать статику
+        } for row in rooms
+    ]
 
 # Роут для API
 @app.route('/api/rooms', methods=['GET'])
