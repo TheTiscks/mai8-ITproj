@@ -8,30 +8,40 @@ from flask_jwt_extended import (
 from app import db
 from app.models.user import User
 
+import sqlite3
+import base64
+
 # Инициализация Blueprints
-auth_bp = Blueprint('auth', __name__)
-main_bp = Blueprint('main', __name__)
+auth_bp    = Blueprint('auth', __name__)
+main_bp    = Blueprint('main', __name__)
 booking_bp = Blueprint('booking', __name__)
-room_bp = Blueprint('room', __name__)
+room_bp    = Blueprint('room', __name__)
+
+# Путь к вашей SQLite-базе
+DB_PATH = 'instance/database.db'
+
+def detect_mime(blob: bytes) -> str:
+    """Определяем MIME-тип JPEG или PNG по сигнатуре."""
+    if blob.startswith(b'\xFF\xD8\xFF'):
+        return 'image/jpeg'
+    if blob.startswith(b'\x89PNG'):
+        return 'image/png'
+    return 'application/octet-stream'
 
 
-# Аутентификация
+# Аутентификация (ваш существующий код) ------------------
+
 @auth_bp.route('/api/register', methods=['POST'])
 def register():
+    # ... ваш код без изменений ...
     data = request.get_json()
-
-    # Валидация
     required_fields = ['name', 'email', 'password', 'confirm_password']
     if not data or not all(k in data for k in required_fields):
         return jsonify({'error': 'Не все поля заполнены'}), 400
-
     if data['password'] != data['confirm_password']:
         return jsonify({'error': 'Пароли не совпадают'}), 400
-
     if len(data['password']) < 8:
         return jsonify({'error': 'Пароль должен содержать минимум 8 символов'}), 400
-
-    # Проверка существующего пользователя
     if db.session.query(db.exists().where(User.email == data['email'])).scalar():
         return jsonify({'error': 'Email уже зарегистрирован'}), 400
 
@@ -43,19 +53,12 @@ def register():
         )
         db.session.add(user)
         db.session.commit()
-
         access_token = create_access_token(identity=user.id)
-
         return jsonify({
             'message': 'Регистрация успешна',
             'access_token': access_token,
-            'user': {
-                'id': user.id,
-                'name': user.name,
-                'email': user.email
-            }
+            'user': {'id': user.id, 'name': user.name, 'email': user.email}
         }), 201
-
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -63,24 +66,17 @@ def register():
 
 @auth_bp.route('/api/login', methods=['POST'])
 def login():
+    # ... ваш код без изменений ...
     data = request.get_json()
-
     if not data or 'email' not in data or 'password' not in data:
         return jsonify({'error': 'Необходимы email и пароль'}), 400
-
     user = User.query.filter_by(email=data['email']).first()
-
     if user and check_password_hash(user.password, data['password']):
         access_token = create_access_token(identity=user.id)
         return jsonify({
             'access_token': access_token,
-            'user': {
-                'id': user.id,
-                'name': user.name,
-                'email': user.email
-            }
+            'user': {'id': user.id, 'name': user.name, 'email': user.email}
         })
-
     return jsonify({'error': 'Неверный email или пароль'}), 401
 
 
@@ -95,24 +91,64 @@ def logout():
 def get_current_user():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
-    return jsonify({
-        'id': user.id,
-        'name': user.name,
-        'email': user.email
-    })
+    return jsonify({'id': user.id, 'name': user.name, 'email': user.email})
 
 
-# Переговорки
+# Переговорки: список всех комнат с фото и описанием --------------
+
 @room_bp.route('/api/rooms', methods=['GET'])
-def get_rooms():
-    from app.models.room import Room
-    rooms = Room.query.all()
-    return jsonify([{
-        'id': r.id,
-        'name': r.name,
-        'capacity': r.capacity,
-        'equipment': r.equipment
-    } for r in rooms])
+def list_rooms():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, capacity, equipment, photo FROM rooms")
+    rooms = []
+    for id_, name, cap, eq, blob in cursor.fetchall():
+        img = None
+        if blob:
+            mime = detect_mime(blob)
+            b64 = base64.b64encode(blob).decode('utf-8')
+            img = f"data:{mime};base64,{b64}"
+        rooms.append({
+            'id': id_,
+            'name': name,
+            'capacity': cap,
+            'equipment': eq,
+            'image': img,
+            'description': f"Вместимость: {cap} чел. Оборудование: {eq}"
+        })
+    conn.close()
+    return jsonify(rooms)
+
+
+# Переговорка по ID: детали одной комнаты ------------------------
+
+@room_bp.route('/api/rooms/<int:room_id>', methods=['GET'])
+def get_room(room_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, name, capacity, equipment, photo FROM rooms WHERE id = ?",
+        (room_id,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return jsonify({'error': 'Комната не найдена'}), 404
+
+    id_, name, cap, eq, blob = row
+    img = None
+    if blob:
+        mime = detect_mime(blob)
+        b64 = base64.b64encode(blob).decode('utf-8')
+        img = f"data:{mime};base64,{b64}"
+    return jsonify({
+        'id': id_,
+        'name': name,
+        'capacity': cap,
+        'equipment': eq,
+        'image': img,
+        'description': f"Вместимость: {cap} чел. Оборудование: {eq}"
+    })
 
 
 # Бронирования
