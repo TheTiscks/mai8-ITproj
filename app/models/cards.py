@@ -1,57 +1,63 @@
-from flask import Flask, jsonify
-from flask_cors import CORS
-import sqlite3
-import base64
+# app/cards.py
+from flask import Blueprint, jsonify
+import sqlite3, base64
 
-app = Flask(__name__)
-CORS(app)
+cards_bp = Blueprint('cards', __name__)
 
-def get_rooms():
-    conn = sqlite3.connect('instance/database.db')
+DB = 'instance/database.db'
+
+def detect_mime(blob: bytes) -> str:
+    if blob.startswith(b'\xFF\xD8\xFF'):
+        return 'image/jpeg'
+    if blob.startswith(b'\x89PNG'):
+        return 'image/png'
+    return 'application/octet-stream'
+
+@cards_bp.route('/api/rooms', methods=['GET'])
+def list_rooms():
+    conn = sqlite3.connect(DB)
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, capacity, equipment, photo FROM rooms")
     rooms = []
-    for row in cursor.fetchall():
-        photo_blob = row[4]
-        photo_base64 = (
-            f"data:image/jpeg;base64,{base64.b64encode(photo_blob).decode('utf-8')}"
-            if photo_blob else None
-        )
+    for id, name, capacity, equipment, photo_blob in cursor.fetchall():
+        img = None
+        if photo_blob:
+            mime = detect_mime(photo_blob)
+            img = f"data:{mime};base64,{base64.b64encode(photo_blob).decode()}"
         rooms.append({
-            'id': row[0],
-            'name': row[1],
-            'capacity': row[2],
-            'equipment': row[3],
-            'photo': photo_base64
+            'id': id,
+            'name': name,
+            'capacity': capacity,
+            'equipment': equipment,
+            'image': img,
+            'description': f"Вместимость: {capacity} чел. Оборудование: {equipment}"
         })
     conn.close()
-    return rooms
+    return jsonify(rooms)
 
-@app.route('/api/rooms', methods=['GET'])
-def rooms():
-    return jsonify(get_rooms())
-
-@app.route('/api/rooms/<int:room_id>', methods=['GET'])
-def get_room_by_id(room_id):
-    conn = sqlite3.connect('instance/database.db')
+@cards_bp.route('/api/rooms/<int:room_id>', methods=['GET'])
+def get_room(room_id):
+    conn = sqlite3.connect(DB)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, capacity, equipment, photo FROM rooms WHERE id = ?", (room_id,))
+    cursor.execute(
+        "SELECT id, name, capacity, equipment, photo FROM rooms WHERE id = ?",
+        (room_id,)
+    )
     row = cursor.fetchone()
     conn.close()
-    if row:
-        photo_base64 = (
-            f"data:image/jpeg;base64,{base64.b64encode(row[4]).decode('utf-8')}"
-            if row[4] else None
-        )
-        return jsonify({
-            'id': row[0],
-            'name': row[1],
-            'capacity': row[2],
-            'equipment': row[3],
-            'photo': photo_base64
-        })
-    else:
+    if not row:
         return jsonify({'error': 'Комната не найдена'}), 404
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    id, name, capacity, equipment, photo_blob = row
+    img = None
+    if photo_blob:
+        mime = detect_mime(photo_blob)
+        img = f"data:{mime};base64,{base64.b64encode(photo_blob).decode()}"
+    return jsonify({
+        'id': id,
+        'name': name,
+        'capacity': capacity,
+        'equipment': equipment,
+        'image': img,
+        'description': f"Вместимость: {capacity} чел. Оборудование: {equipment}"
+    })
