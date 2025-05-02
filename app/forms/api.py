@@ -2,6 +2,7 @@
 from flask import request, jsonify
 from app import db
 from app.models.user import User
+from app.models.room import Room
 from werkzeug.security import generate_password_hash
 
 
