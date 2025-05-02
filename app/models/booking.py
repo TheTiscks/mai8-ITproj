@@ -7,8 +7,9 @@ class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=False)
-    start_time = db.Column(db.DateTime, nullable=False)
-    end_time = db.Column(db.DateTime, nullable=False)
+    date = db.Column(db.Date, nullable=False)  # Новое поле для даты бронирования
+    start_time = db.Column(db.Time, nullable=False)  # Было DateTime → Time
+    end_time = db.Column(db.Time, nullable=False)  # Было DateTime → Time
     participants = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
