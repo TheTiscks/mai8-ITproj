@@ -12,5 +12,9 @@ class Booking(db.Model):
     participants = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Отношения
+    user = db.relationship('User', back_populates='bookings')
+    room = db.relationship('Room', back_populates='bookings')
+
     def __repr__(self):
-        return f'<Booking {self.id} (Room: {self.room_id})>'
+        return f'<Booking {self.id}>'

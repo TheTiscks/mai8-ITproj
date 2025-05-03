@@ -1,168 +1,207 @@
 import React, { useState, useEffect } from "react";
 import DatePicker, { registerLocale } from "react-datepicker";
-import ru from "date-fns/locale/ru"; // Импортируем русскую локаль
+import ru from "date-fns/locale/ru";
 import "react-datepicker/dist/react-datepicker.css";
+import axios from "axios";
 
-// Регистрируем русскую локаль
 registerLocale("ru", ru);
 
-export default function BookingModal({ onClose, onConfirm, bookedSlots = [] }) {
+export default function BookingModal({ onClose, roomId }) {
   const [selectedSlot, setSelectedSlot] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [availableSlots, setAvailableSlots] = useState([]);
   const [error, setError] = useState("");
-  const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [participants, setParticipants] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  // Генерируем все временные слоты с 09:00 до 20:00 (последний слот: 19:00–20:00)
   useEffect(() => {
-    const allSlots = [];
-    for (let hour = 9; hour < 20; hour++) {
-      const start = hour.toString().padStart(2, "0") + ":00";
-      const end = (hour + 1).toString().padStart(2, "0") + ":00";
-      allSlots.push(`${start} - ${end}`);
-    }
-    // Фильтруем слоты, исключая занятые
-    const freeSlots = allSlots.filter((slot) => !bookedSlots.includes(slot));
-    setAvailableSlots(freeSlots);
-  }, [bookedSlots]);
+    const fetchAvailability = async () => {
+      try {
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        const response = await axios.get(
+          `http://localhost:5000/api/rooms/${roomId}/availability?date=${dateStr}`
+        );
 
-  const handleInitialConfirm = () => {
-    if (!selectedSlot) {
-      setError("Пожалуйста, выберете временной слот!");
-      return;
-    }
+        const bookedSlots = response.data.booked_slots.map(
+          slot => `${slot.start} - ${slot.end}`
+        );
+
+        const allSlots = [];
+        for (let hour = 9; hour < 20; hour++) {
+          const start = `${hour.toString().padStart(2, '0')}:00`;
+          const end = `${(hour + 1).toString().padStart(2, '0')}:00`;
+          allSlots.push(`${start} - ${end}`);
+        }
+
+        setAvailableSlots(allSlots.filter(slot => !bookedSlots.includes(slot)));
+      } catch (err) {
+        console.error("Ошибка получения доступных слотов:", err);
+        setError("Не удалось загрузить доступное время. Попробуйте позже.");
+      }
+    };
+
+    fetchAvailability();
+  }, [selectedDate, roomId]);
+
+  const handleSubmit = async () => {
+    setLoading(true);
     setError("");
-    setShowConfirmation(true);
+
+    try {
+      if (!selectedSlot) {
+        throw new Error("Выберите временной слот");
+      }
+
+      const [startTime, endTime] = selectedSlot.split(" - ");
+
+      // Валидация формата времени
+      if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+        setError("Неверный формат времени. Используйте HH:MM");
+        setLoading(false);
+        return;
+      }
+
+      const dateStr = selectedDate.toISOString().split('T')[0];
+
+      const payload = {
+        room_id: parseInt(roomId),
+        start_time: `${dateStr}T${startTime}:00+03:00`,
+        end_time: `${dateStr}T${endTime}:00+03:00`,
+        participants: parseInt(participants) || 1
+      };
+
+      console.log("Отправляемые данные:", payload);
+
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        "http://localhost:5000/api/bookings",
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        }
+      );
+
+      setShowSuccess(true);
+    } catch (err) {
+      let errorMsg = "Ошибка при бронировании";
+
+      if (err.response) {
+        console.error("Ошибка ответа сервера:", err.response.data);
+        errorMsg = err.response.data?.error || errorMsg;
+        if (err.response.data?.details) {
+          errorMsg += `: ${err.response.data.details}`;
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleContinue = () => {
-    setShowSuccess(true);
-  };
-
-  const handleSuccessClose = () => {
-    // Форматируем дату в формат YYYY-MM-DD
-    const yyyy = selectedDate.getFullYear();
-    const mm = (selectedDate.getMonth() + 1).toString().padStart(2, "0");
-    const dd = selectedDate.getDate().toString().padStart(2, "0");
-    const formattedDate = `${yyyy}-${mm}-${dd}`;
-
-    // Передаём данные бронирования родителю
-    onConfirm({ date: formattedDate, slot: selectedSlot });
-    onClose();
-  };
-
-  // Функция для форматированного отображения даты в уведомлении успеха
   const formatDate = (date) => {
-    return date.toLocaleDateString("ru-RU");
+    return date.toLocaleDateString("ru-RU", {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
   };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      {/* Overlay с умеренной непрозрачностью */}
-      <div
-        className="absolute inset-0 bg-black opacity-25"
-        onClick={onClose}
-      ></div>
-      {/* Модальное окно */}
-      <div className="bg-white rounded-lg shadow-lg z-10 p-6 max-w-sm w-full">
-        {!showConfirmation && !showSuccess && (
+      <div className="absolute inset-0 bg-black opacity-25" onClick={onClose}></div>
+
+      <div className="bg-white rounded-lg shadow-lg z-10 p-6 w-full max-w-md">
+        {!showSuccess ? (
           <>
-            <h3 className="text-xl font-bold mb-4 text-center">
-              Выберите дату и временной слот
-            </h3>
-            {/* Выбор даты */}
+            <h2 className="text-xl font-bold mb-4">Бронирование переговорки</h2>
+
             <div className="mb-4">
-              <label className="block text-gray-700 mb-1">
-                Дата бронирования
-              </label>
+              <label className="block text-gray-700 mb-1">Дата</label>
               <DatePicker
                 selected={selectedDate}
-                onChange={(date) => setSelectedDate(date)}
+                onChange={date => setSelectedDate(date)}
                 minDate={new Date()}
                 dateFormat="yyyy-MM-dd"
-                locale="ru" // Русская локаль, неделя начинается с понедельника
-                className="w-full border border-gray-300 p-2 rounded"
+                locale="ru"
+                className="w-full p-2 border rounded"
               />
             </div>
-            {/* Выбор временного слота */}
+
             <div className="mb-4">
-              <label className="block text-gray-700 mb-1">
-                Временной слот
-              </label>
+              <label className="block text-gray-700 mb-1">Время</label>
               <select
-                className="w-full border border-gray-300 p-2 rounded"
+                className="w-full p-2 border rounded"
                 value={selectedSlot}
-                onChange={(e) => setSelectedSlot(e.target.value)}
+                onChange={e => setSelectedSlot(e.target.value)}
+                disabled={availableSlots.length === 0}
               >
                 <option value="">Выберите время</option>
-                {availableSlots.map((slot, index) => (
-                  <option key={index} value={slot}>
-                    {slot}
-                  </option>
+                {availableSlots.map(slot => (
+                  <option key={slot} value={slot}>{slot}</option>
                 ))}
               </select>
-              {error && <p className="text-red-500 mt-2">{error}</p>}
+              {availableSlots.length === 0 && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Нет доступных слотов на выбранную дату
+                </p>
+              )}
             </div>
-            <div className="flex justify-between">
+
+            <div className="mb-4">
+              <label className="block text-gray-700 mb-1">
+                Количество участников
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={participants}
+                onChange={e => setParticipants(Number(e.target.value))}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
               <button
                 onClick={onClose}
-                className="text-gray-600 hover:underline"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 Отмена
               </button>
               <button
-                onClick={handleInitialConfirm}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                onClick={handleSubmit}
+                disabled={!selectedSlot || loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
-                Подтвердить
+                {loading ? "Сохранение..." : "Забронировать"}
               </button>
             </div>
           </>
-        )}
-
-        {showConfirmation && !showSuccess && (
-          <>
-            <h3 className="text-xl font-bold mb-4 text-center">
-              Подтверждение бронирования
-            </h3>
-            <p className="text-center text-gray-700 mb-6">
-              Вы хотите забронировать на {formatDate(selectedDate)} в {selectedSlot}?
+        ) : (
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">Бронирование подтверждено!</h2>
+            <p className="mb-4">
+              {formatDate(selectedDate)} с {selectedSlot}
             </p>
-            <div className="flex justify-between">
-              <button
-                onClick={() => setShowConfirmation(false)}
-                className="text-gray-600 hover:underline"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleContinue}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-              >
-                Продолжить
-              </button>
-            </div>
-          </>
-        )}
-
-        {showSuccess && (
-          <>
-            <h3 className="text-xl font-bold mb-4 text-center">
-              Бронь успешна!
-            </h3>
-            <p className="text-center text-gray-700 mb-6">
-              Вы забронировали переговорную на {formatDate(selectedDate)} в {selectedSlot}.
-            </p>
-            <div className="flex justify-center">
-              <button
-                onClick={handleSuccessClose}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-              >
-                Отлично
-              </button>
-            </div>
-          </>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Готово
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -6,8 +6,8 @@ class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
     capacity = db.Column(db.Integer, nullable=False)
-    equipment = db.Column(db.String(200))  # Например: "Проектор, Доска"
-    photo = db.Column(db.LargeBinary)  # Путь к изображению
+    equipment = db.Column(db.String(200))
+    photo = db.Column(db.LargeBinary)
 
-    # Связь с бронированиями (один ко многим)
-    bookings = db.relationship("Booking", backref="room", lazy=True)
+    # Отношения
+    bookings = db.relationship('Booking', back_populates='room', lazy=True)
