@@ -1,5 +1,6 @@
-# app/cards.py
+# Илья, мы знаем, в каком мы файле
 from flask import Blueprint, jsonify
+from app.models.room import Room
 import sqlite3, base64
 
 cards_bp = Blueprint('cards', __name__)
@@ -24,10 +25,13 @@ def list_rooms():
         if photo_blob:
             mime = detect_mime(photo_blob)
             img = f"data:{mime};base64,{base64.b64encode(photo_blob).decode()}"
+        room = Room.query.get(id)
+        occupancy_rate = room.get_occupancy_rate() if room else 0.0
         rooms.append({
             'id': id,
             'name': name,
             'capacity': capacity,
+            'occupancy_rate': occupancy_rate,
             'equipment': equipment,
             'image': img,
             'description': f"Вместимость: {capacity} чел. Оборудование: {equipment}"
