@@ -15,6 +15,14 @@ export default function Header() {
   return (
     <header className="bg-blue-900 shadow p-4 flex justify-between items-center">
       <div className="text-xl font-bold text-white">LivnyOffice</div>
+      <div className="flex items-center gap-6">
+        {/* Добавленная ссылка "Статистика" */}
+        <Link 
+          to="/occupancy" 
+          className="text-white hover:text-blue-200 transition-colors"
+        >
+          Статистика
+        </Link>
       <div className="relative">
         {user ? (
           <div className="relative">

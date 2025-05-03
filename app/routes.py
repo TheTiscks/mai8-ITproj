@@ -7,6 +7,9 @@ from flask_jwt_extended import (
 )
 from app import db
 from app.models.user import User
+from utils.visualization import generate_occupancy_chart
+from app.models.room import Room
+from datetime import date
 
 import sqlite3
 import base64
@@ -204,6 +207,23 @@ def create_booking():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+
+@room_bp.route('/api/occupancy/chart', methods=['GET'])
+def get_occupancy_chart():
+    target_date_str = request.args.get('date', default=date.today().isoformat())
+    target_date = date.fromisoformat(target_date_str)
+
+    rooms = Room.query.all()
+    occupancy_data = [
+        {
+            "name": room.name,
+            "occupancy_rate": room.get_occupancy_rate(target_date)
+        }
+        for room in rooms
+    ]
+
+    chart_image = generate_occupancy_chart(occupancy_data)
+    return jsonify({"chart": f"data:image/png;base64,{chart_image}"})
 
 # Healthcheck
 @main_bp.route('/api/healthcheck')
