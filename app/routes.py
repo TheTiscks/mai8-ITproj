@@ -7,7 +7,7 @@ from flask_jwt_extended import (
 )
 from app import db
 from app.models.user import User
-from utils.visualization import generate_occupancy_chart
+from app.utils.visualization import generate_occupancy_chart
 from app.models.room import Room
 from datetime import date
 
@@ -32,11 +32,8 @@ def detect_mime(blob: bytes) -> str:
     return 'application/octet-stream'
 
 
-# Аутентификация (ваш существующий код) ------------------
-
 @auth_bp.route('/api/register', methods=['POST'])
 def register():
-    # ... ваш код без изменений ...
     data = request.get_json()
     required_fields = ['name', 'email', 'password', 'confirm_password']
     if not data or not all(k in data for k in required_fields):
