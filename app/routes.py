@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta, timezone
+from app.models.booking import Booking
+from app.models.room import Room
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
@@ -7,18 +10,25 @@ from flask_jwt_extended import (
 )
 from app import db
 from app.models.user import User
+from flask import request, jsonify
+from datetime import datetime
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.models import booking, room, user
+from . import db
 
 import sqlite3
 import base64
+import pytz
 
 # Инициализация Blueprints
-auth_bp    = Blueprint('auth', __name__)
-main_bp    = Blueprint('main', __name__)
+auth_bp = Blueprint('auth', __name__)
+main_bp = Blueprint('main', __name__)
 booking_bp = Blueprint('booking', __name__)
-room_bp    = Blueprint('room', __name__)
+room_bp = Blueprint('room', __name__)
 
 # Путь к вашей SQLite-базе
 DB_PATH = 'instance/database.db'
+
 
 def detect_mime(blob: bytes) -> str:
     """Определяем MIME-тип JPEG или PNG по сигнатуре."""
@@ -29,11 +39,10 @@ def detect_mime(blob: bytes) -> str:
     return 'application/octet-stream'
 
 
-# Аутентификация (ваш существующий код) ------------------
+# Аутентификация ------------------
 
 @auth_bp.route('/api/register', methods=['POST'])
 def register():
-    # ... ваш код без изменений ...
     data = request.get_json()
     required_fields = ['name', 'email', 'password', 'confirm_password']
     if not data or not all(k in data for k in required_fields):
@@ -66,7 +75,6 @@ def register():
 
 @auth_bp.route('/api/login', methods=['POST'])
 def login():
-    # ... ваш код без изменений ...
     data = request.get_json()
     if not data or 'email' not in data or 'password' not in data:
         return jsonify({'error': 'Необходимы email и пароль'}), 400
@@ -151,58 +159,121 @@ def get_room(room_id):
     })
 
 
-# Бронирования
+# Бронирования ------------------------
+
 @booking_bp.route('/api/bookings', methods=['POST'])
 @jwt_required()
 def create_booking():
-    from app.models.booking import Booking
-    from app.models.room import Room
-    from datetime import datetime
-
-    data = request.get_json()
-    user_id = get_jwt_identity()
-
     try:
-        # Валидация данных
-        required_fields = ['room_id', 'start_time', 'end_time', 'participants']
-        if not data or not all(k in data for k in required_fields):
-            return jsonify({'error': 'Не все поля заполнены'}), 400
+        data = request.get_json()
+        required_fields = ['room_id', 'date', 'start_time', 'end_time']
+
+        # Проверка обязательных полей
+        if not all(field in data for field in required_fields):
+            return jsonify({
+                "error": "Отсутствуют обязательные поля",
+                "required_fields": required_fields
+            }), 400
+
+        # Парсинг даты и времени
+        try:
+            booking_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+            start_time = datetime.strptime(data['start_time'], '%H:%M').time()
+            end_time = datetime.strptime(data['end_time'], '%H:%M').time()
+        except ValueError as e:
+            return jsonify({
+                "error": "Неверный формат данных",
+                "details": str(e),
+                "expected_formats": {
+                    "date": "YYYY-MM-DD",
+                    "time": "HH:MM"
+                }
+            }), 422
+
+        # Проверка времени
+        if start_time >= end_time:
+            return jsonify({
+                "error": "Некорректный временной интервал"
+            }), 422
 
         # Проверка существования комнаты
         room = Room.query.get(data['room_id'])
         if not room:
-            return jsonify({'error': 'Комната не найдена'}), 404
+            return jsonify({"error": "Комната не найдена"}), 404
 
-        # Проверка доступности времени
-        conflicting_booking = Booking.query.filter(
+        # Проверка пересечений бронирований
+        overlapping = Booking.query.filter(
             Booking.room_id == data['room_id'],
-            Booking.start_time < datetime.fromisoformat(data['end_time']),
-            Booking.end_time > datetime.fromisoformat(data['start_time'])
+            Booking.date == booking_date,
+            Booking.start_time < end_time,
+            Booking.end_time > start_time
         ).first()
 
-        if conflicting_booking:
-            return jsonify({'error': 'Комната уже забронирована на это время'}), 400
+        if overlapping:
+            return jsonify({
+                "error": "Время уже занято",
+                "details": f"Занято с {overlapping.start_time} до {overlapping.end_time}"
+            }), 409
 
-        # Создание бронирования
+        # Создание брони
         booking = Booking(
-            user_id=user_id,
+            user_id=get_jwt_identity(),
             room_id=data['room_id'],
-            start_time=datetime.fromisoformat(data['start_time']),
-            end_time=datetime.fromisoformat(data['end_time']),
-            participants=data['participants']
+            date=booking_date,
+            start_time=start_time,
+            end_time=end_time,
+            participants=data.get('participants', 1)
         )
 
         db.session.add(booking)
         db.session.commit()
 
         return jsonify({
-            'message': 'Бронирование создано',
-            'booking_id': booking.id
+            "message": "Бронирование создано",
+            "booking_id": booking.id,
+            "date": booking_date.strftime('%d.%m.%Y'),
+            "time": f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
         }), 201
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            "error": "Ошибка сервера",
+            "details": str(e)
+        }), 500
+
+
+@booking_bp.route('/api/rooms/<int:room_id>/availability', methods=['GET'])
+def get_availability(room_id):
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({'error': 'Параметр date обязателен'}), 400
+
+    try:
+        booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Неверный формат даты (ожидается YYYY-MM-DD)'}), 400
+
+    # Проверка существования комнаты
+    if not Room.query.get(room_id):
+        return jsonify({'error': 'Комната не найдена'}), 404
+
+    # Получаем занятые слоты
+    booked_slots = Booking.query.filter(
+        Booking.room_id == room_id,
+        Booking.date == booking_date
+    ).all()
+
+    return jsonify({
+        'room_id': room_id,
+        'date': date_str,
+        'booked_slots': [
+            {
+                'start': slot.start_time.strftime('%H:%M'),
+                'end': slot.end_time.strftime('%H:%M')
+            } for slot in booked_slots
+        ]
+    })
 
 
 # Healthcheck
