@@ -19,6 +19,7 @@ def create_app():
     # Конфигурация
     app.config.from_object("config.Config")
     app.config.update({
+        'JWT_VERIFY_SUB': False,
         'JWT_SECRET_KEY': os.getenv('JWT_SECRET_KEY', 'super-secret-key'),
         'JWT_ACCESS_TOKEN_EXPIRES': False,
         'SQLALCHEMY_TRACK_MODIFICATIONS': False
