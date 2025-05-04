@@ -1,7 +1,10 @@
+// src/UserContext.jsx
 import { createContext, useContext, useState } from "react";
 
-const UserContext = createContext(null);
+// Создаём контекст
+export const UserContext = createContext(null);
 
+// Провайдер для приложения
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const storedUser = localStorage.getItem("user");
@@ -26,4 +29,5 @@ export const UserProvider = ({ children }) => {
   );
 };
 
+// Удобный хук для компонентов
 export const useUser = () => useContext(UserContext);
