@@ -164,80 +164,64 @@ def get_room(room_id):
 @booking_bp.route('/api/bookings', methods=['POST'])
 @jwt_required()
 def create_booking():
-    print("Получен запрос на бронирование:", request.json)
     try:
-        # 1. Проверка данных
-        if not request.is_json:
-            return jsonify({"error": "Требуется JSON"}), 400
-
         data = request.get_json()
+        required_fields = ['room_id', 'date', 'start_time', 'end_time']
 
-        # 2. Валидация полей
-        required_fields = ['room_id', 'start_time', 'end_time']
+        # Проверка обязательных полей
         if not all(field in data for field in required_fields):
             return jsonify({
                 "error": "Отсутствуют обязательные поля",
                 "required_fields": required_fields
             }), 400
 
-        # 3. Парсинг времени с учетом часового пояса
+        # Парсинг даты и времени
         try:
-            # Указываем, что время приходит в UTC+3 (Московское время)
-            tz = pytz.timezone('Europe/Moscow')
-            start = datetime.fromisoformat(data['start_time']).astimezone(tz)
-            end = datetime.fromisoformat(data['end_time']).astimezone(tz)
-
-            # Конвертируем в UTC для хранения в БД
-            start_utc = start.astimezone(pytz.utc)
-            end_utc = end.astimezone(pytz.utc)
+            booking_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+            start_time = datetime.strptime(data['start_time'], '%H:%M').time()
+            end_time = datetime.strptime(data['end_time'], '%H:%M').time()
         except ValueError as e:
             return jsonify({
-                "error": "Неверный формат времени",
+                "error": "Неверный формат данных",
                 "details": str(e),
-                "expected_format": "YYYY-MM-DDTHH:MM:SS+03:00 (Московское время)"
+                "expected_formats": {
+                    "date": "YYYY-MM-DD",
+                    "time": "HH:MM"
+                }
             }), 422
 
-        # 4. Проверка времени
-        if start >= end:
+        # Проверка времени
+        if start_time >= end_time:
             return jsonify({
-                "error": "Некорректный временной интервал",
-                "details": "Время окончания должно быть позже времени начала"
+                "error": "Некорректный временной интервал"
             }), 422
 
-        # 5. Проверка что бронирование не в прошлом
-        if start < datetime.now(tz):
-            return jsonify({
-                "error": "Некорректное время",
-                "details": "Нельзя забронировать время в прошлом"
-            }), 422
-
-        # 6. Проверка существования комнаты
+        # Проверка существования комнаты
         room = Room.query.get(data['room_id'])
         if not room:
             return jsonify({"error": "Комната не найдена"}), 404
 
-        # 7. Проверка на пересечение бронирований
-        overlapping_booking = Booking.query.filter(
+        # Проверка пересечений бронирований
+        overlapping = Booking.query.filter(
             Booking.room_id == data['room_id'],
-            Booking.start_time < end_utc,
-            Booking.end_time > start_utc
+            Booking.date == booking_date,
+            Booking.start_time < end_time,
+            Booking.end_time > start_time
         ).first()
 
-        if overlapping_booking:
-            # Конвертируем обратно в московское время для отображения
-            overlap_start = overlapping_booking.start_time.astimezone(tz)
-            overlap_end = overlapping_booking.end_time.astimezone(tz)
+        if overlapping:
             return jsonify({
                 "error": "Время уже занято",
-                "details": f"Занято с {overlap_start.strftime('%H:%M')} до {overlap_end.strftime('%H:%M')}"
+                "details": f"Занято с {overlapping.start_time} до {overlapping.end_time}"
             }), 409
 
-        # 8. Создание брони
+        # Создание брони
         booking = Booking(
             user_id=get_jwt_identity(),
             room_id=data['room_id'],
-            start_time=start_utc,
-            end_time=end_utc,
+            date=booking_date,
+            start_time=start_time,
+            end_time=end_time,
             participants=data.get('participants', 1)
         )
 
@@ -247,8 +231,8 @@ def create_booking():
         return jsonify({
             "message": "Бронирование создано",
             "booking_id": booking.id,
-            "time": f"{start.strftime('%H:%M')} - {end.strftime('%H:%M')}",
-            "date": start.strftime('%d.%m.%Y')
+            "date": booking_date.strftime('%d.%m.%Y'),
+            "time": f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
         }), 201
 
     except Exception as e:
@@ -261,53 +245,34 @@ def create_booking():
 
 @booking_bp.route('/api/rooms/<int:room_id>/availability', methods=['GET'])
 def get_availability(room_id):
-    # 1. Проверка параметра даты
-    date = request.args.get('date')
-    if not date:
+    date_str = request.args.get('date')
+    if not date_str:
         return jsonify({'error': 'Параметр date обязателен'}), 400
 
-    # 2. Проверка существования комнаты
+    try:
+        booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Неверный формат даты (ожидается YYYY-MM-DD)'}), 400
+
+    # Проверка существования комнаты
     if not Room.query.get(room_id):
         return jsonify({'error': 'Комната не найдена'}), 404
 
-    # 3. Парсинг даты с валидацией
-    try:
-        tz = pytz.timezone('Europe/Moscow')
-        target_date = datetime.fromisoformat(date).date()
-        if target_date < datetime.now(tz).date():
-            return jsonify({'error': 'Дата не может быть в прошлом'}), 400
-    except ValueError:
-        return jsonify({
-            'error': 'Неверный формат даты',
-            'example': '2023-12-31'
-        }), 400
-
-    # 4. Оптимизированный запрос к БД
-    booked_slots = db.session.query(
-        Booking.start_time,
-        Booking.end_time
-    ).filter(
+    # Получаем занятые слоты
+    booked_slots = Booking.query.filter(
         Booking.room_id == room_id,
-        db.func.date(Booking.start_time) == target_date
+        Booking.date == booking_date
     ).all()
 
-    # 5. Конвертация времени в московский часовой пояс
-    booked_slots_local = []
-    for slot in booked_slots:
-        start_local = slot.start_time.astimezone(tz)
-        end_local = slot.end_time.astimezone(tz)
-        booked_slots_local.append({
-            'start': start_local.time().strftime('%H:%M'),
-            'end': end_local.time().strftime('%H:%M')
-        })
-
-    # 6. Форматирование ответа
     return jsonify({
         'room_id': room_id,
-        'date': date,
-        'available': len(booked_slots) == 0,
-        'booked_slots': booked_slots_local,
-        'time_zone': 'Europe/Moscow'
+        'date': date_str,
+        'booked_slots': [
+            {
+                'start': slot.start_time.strftime('%H:%M'),
+                'end': slot.end_time.strftime('%H:%M')
+            } for slot in booked_slots
+        ]
     })
 
 
