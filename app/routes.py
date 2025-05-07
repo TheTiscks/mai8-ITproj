@@ -99,7 +99,12 @@ def logout():
 def get_current_user():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
-    return jsonify({'id': user.id, 'name': user.name, 'email': user.email})
+    return jsonify({
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'role': user.role  # ← добавили
+    })
 
 
 # Переговорки: список всех комнат с фото и описанием --------------
@@ -242,6 +247,51 @@ def create_booking():
             "details": str(e)
         }), 500
 
+# 1. Получить свои бронирования (или все, если роль C)
+@booking_bp.route('/api/bookings', methods=['GET'])
+@jwt_required()
+def list_bookings():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    if user.role == 'C':
+        # админ — видит все
+        bookings = Booking.query.all()
+    else:
+        # остальные — только свои
+        bookings = Booking.query.filter_by(user_id=user_id).all()
+
+    return jsonify([
+        {
+            'id': b.id,
+            'room_id': b.room_id,
+            'start_time': b.start_time.isoformat(),
+            'end_time': b.end_time.isoformat(),
+            'participants': b.participants,
+            'created_at': b.created_at.isoformat(),
+            'user_id': b.user_id
+        }
+        for b in bookings
+    ])
+
+
+# 2. Отменить (удалить) бронирование
+@booking_bp.route('/api/bookings/<int:booking_id>', methods=['DELETE'])
+@jwt_required()
+def cancel_booking(booking_id):
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    booking = Booking.query.get(booking_id)
+    if not booking:
+        return jsonify({'error': 'Бронирование не найдено'}), 404
+
+    # Проверяем право удалять
+    if user.role == 'C' or (user.role == 'B' and booking.user_id == user_id):
+        db.session.delete(booking)
+        db.session.commit()
+        return jsonify({'message': 'Бронирование отменено'}), 200
+    else:
+        return jsonify({'error': 'Нет прав для отмены'}), 403
 
 @booking_bp.route('/api/rooms/<int:room_id>/availability', methods=['GET'])
 def get_availability(room_id):
