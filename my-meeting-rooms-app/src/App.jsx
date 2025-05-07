@@ -3,7 +3,7 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import RoomDetailPage from './pages/RoomDetailPage'
-
+import MyBookingsPage from './pages/MyBookingsPage'
 function App() {
   return (
     <Routes>
