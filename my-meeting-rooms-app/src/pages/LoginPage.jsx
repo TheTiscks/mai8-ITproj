@@ -1,3 +1,4 @@
+// src/pages/LoginPage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../UserContext";
@@ -16,20 +17,18 @@ export default function LoginPage() {
     try {
       const response = await fetch("http://localhost:5000/api/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Неверный email или пароль");
       }
 
-      const data = await response.json();
-      login(data.user, data.access_token); // Передаем пользователя и токен в контекст
-      navigate("/"); // Перенаправляем на главную страницу
+      // передаем и user, и токен
+      login(data.user, data.access_token);
+      navigate("/");
     } catch (err) {
       setError(err.message);
     }
@@ -47,7 +46,7 @@ export default function LoginPage() {
             placeholder="Email"
             className="border p-2 rounded"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             required
           />
           <input
@@ -55,18 +54,21 @@ export default function LoginPage() {
             placeholder="Пароль"
             className="border p-2 rounded"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             required
           />
-          <button type="submit" className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+          <button
+            type="submit"
+            className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+          >
             Войти
           </button>
         </form>
         <div className="mt-4 text-sm text-center">
-          Ещё не зарегистрировались?{' '}
+          Ещё не зарегистрировались?{" "}
           <button
             className="text-blue-500 hover:underline"
-            onClick={() => navigate('/register')}
+            onClick={() => navigate("/register")}
           >
             Зарегистрироваться
           </button>
@@ -74,7 +76,7 @@ export default function LoginPage() {
         <div className="mt-2 text-center">
           <button
             className="text-gray-500 hover:underline text-sm"
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
           >
             Назад
           </button>

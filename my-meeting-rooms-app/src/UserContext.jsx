@@ -1,18 +1,17 @@
 // src/UserContext.jsx
-import { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 
-// Создаём контекст
-export const UserContext = createContext(null);
+const UserContext = createContext(null);
 
-// Провайдер для приложения
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("user");
-    return storedUser ? JSON.parse(storedUser) : null;
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
   });
 
-  const login = (userData) => {
+  const login = (userData, token) => {
     localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("token", token);
     setUser(userData);
   };
 
@@ -29,5 +28,4 @@ export const UserProvider = ({ children }) => {
   );
 };
 
-// Удобный хук для компонентов
 export const useUser = () => useContext(UserContext);
