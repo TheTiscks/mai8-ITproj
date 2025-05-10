@@ -50,9 +50,13 @@ export default function MyBookingsPage() {
       });
   };
 
-  // вспомогательная функция форматирования
-  const formatDateTime = isoString => {
-    const d = new Date(isoString);
+  // Надёжно превращаем любую строку с пробелом в ISO (T), чтобы new Date() не кидал Invalid Date
+  const formatDateTime = str => {
+    if (!str) return '';
+    // иногда бэк может вернуть "2025-05-11 09:00:00", превратим в "2025-05-11T09:00:00"
+    const iso = str.includes('T') ? str : str.replace(' ', 'T');
+    const d = new Date(iso);
+    if (isNaN(d)) return str; // если всё-таки не парсится, отдадим оригинал
     return `${d.toLocaleDateString('ru-RU')} ${d.toLocaleTimeString('ru-RU', {
       hour: '2-digit',
       minute: '2-digit'
@@ -74,7 +78,10 @@ export default function MyBookingsPage() {
 
         <ul className="space-y-4">
           {bookings.map(b => (
-            <li key={b.id} className="p-4 bg-white rounded shadow flex justify-between items-center">
+            <li
+              key={b.id}
+              className="p-4 bg-white rounded shadow flex justify-between items-center"
+            >
               <div>
                 <p><strong>Комната:</strong> #{b.room_id}</p>
                 <p><strong>С:</strong> {formatDateTime(b.start_time)}</p>
