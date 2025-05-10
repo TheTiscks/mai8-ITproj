@@ -16,7 +16,6 @@ export default function MyBookingsPage() {
     })
       .then(async res => {
         const data = await res.json();
-        // если сервер вернул объект вида { bookings: [...] }, возьмём data.bookings
         const list = Array.isArray(data)
           ? data
           : Array.isArray(data.bookings)
@@ -51,6 +50,15 @@ export default function MyBookingsPage() {
       });
   };
 
+  // вспомогательная функция форматирования
+  const formatDateTime = isoString => {
+    const d = new Date(isoString);
+    return `${d.toLocaleDateString('ru-RU')} ${d.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })}`;
+  };
+
   return (
     <>
       <Header />
@@ -69,8 +77,8 @@ export default function MyBookingsPage() {
             <li key={b.id} className="p-4 bg-white rounded shadow flex justify-between items-center">
               <div>
                 <p><strong>Комната:</strong> #{b.room_id}</p>
-                <p><strong>С:</strong> {new Date(b.start_time).toLocaleString()}</p>
-                <p><strong>До:</strong> {new Date(b.end_time).toLocaleString()}</p>
+                <p><strong>С:</strong> {formatDateTime(b.start_time)}</p>
+                <p><strong>До:</strong> {formatDateTime(b.end_time)}</p>
               </div>
               {(user.role === 'C' || b.user_id === user.id) && (
                 <button
