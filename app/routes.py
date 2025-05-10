@@ -264,6 +264,7 @@ def list_bookings():
     return jsonify([
         {
             'id': b.id,
+            'date': b.date.isoformat(),
             'room_id': b.room_id,
             'start_time': b.start_time.isoformat(),
             'end_time': b.end_time.isoformat(),

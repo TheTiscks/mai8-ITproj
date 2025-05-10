@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser } from "../UserContext"; // вверху
+import { useUser } from "../UserContext";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { login } = useUser();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -11,34 +12,29 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
-  const { login } = useUser(); // внутри компонента
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
     if (error) setError("");
   };
 
   const validateForm = () => {
-    if (!form.name || !form.email || !form.password || !form.confirmPassword) {
+    const { name, email, password, confirmPassword } = form;
+    if (!name || !email || !password || !confirmPassword) {
       setError("Все поля обязательны для заполнения");
       return false;
     }
-
-    if (form.password.length < 8) {
+    if (password.length < 8) {
       setError("Пароль должен содержать минимум 8 символов");
       return false;
     }
-
-    if (form.password !== form.confirmPassword) {
+    if (password !== confirmPassword) {
       setError("Пароли не совпадают");
       return false;
     }
-
     return true;
   };
 
@@ -48,15 +44,12 @@ export default function RegisterPage() {
     setSuccessMessage("");
 
     if (!validateForm()) return;
-
     setIsLoading(true);
 
     try {
       const response = await fetch("http://localhost:5000/api/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
           email: form.email,
@@ -66,16 +59,15 @@ export default function RegisterPage() {
       });
 
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.error || "Ошибка при регистрации");
       }
 
+      // записываем токен и пользователя в контекст
+      login(data.user, data.access_token);
       setSuccessMessage("Регистрация прошла успешно!");
-      localStorage.setItem('token', data.access_token);
-      login(data.user); // сохраняем в контекст
-      setTimeout(() => navigate("/"), 2000);
 
+      // перенаправление после небольшого ожидания
       setTimeout(() => navigate("/"), 2000);
     } catch (err) {
       setError(err.message || "Произошла ошибка. Попробуйте снова.");
@@ -108,9 +100,9 @@ export default function RegisterPage() {
               Имя
             </label>
             <input
-              type="text"
               id="name"
               name="name"
+              type="text"
               placeholder="Ваше имя"
               className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={form.name}
@@ -118,15 +110,14 @@ export default function RegisterPage() {
               required
             />
           </div>
-
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
             <input
-              type="email"
               id="email"
               name="email"
+              type="email"
               placeholder="example@mail.com"
               className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={form.email}
@@ -134,41 +125,38 @@ export default function RegisterPage() {
               required
             />
           </div>
-
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
               Пароль
             </label>
             <input
-              type="password"
               id="password"
               name="password"
+              type="password"
               placeholder="••••••••"
               className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={form.password}
               onChange={handleChange}
               required
-              minLength="8"
+              minLength={8}
             />
           </div>
-
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
               Подтвердите пароль
             </label>
             <input
-              type="password"
               id="confirmPassword"
               name="confirmPassword"
+              type="password"
               placeholder="••••••••"
               className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={form.confirmPassword}
               onChange={handleChange}
               required
-              minLength="8"
+              minLength={8}
             />
           </div>
-
           <button
             type="submit"
             disabled={isLoading}
