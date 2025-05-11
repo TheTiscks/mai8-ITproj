@@ -8,7 +8,8 @@ import { useUser } from "../UserContext";
 export default function RoomDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useUser(); // <-- хук вместо прямого контекста
+  const { user } = useUser();
+  const role = user?.role?.toUpperCase();
 
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -50,14 +51,9 @@ export default function RoomDetailPage() {
           >
             Назад
           </button>
-          {user ? (
-            <button
-              onClick={() => setShowBookingModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              Забронировать
-            </button>
-          ) : (
+
+          {/* Раз ветвление по статусу пользователя */}
+          {!user ? (
             <p className="text-gray-600">
               Для бронирования необходимо{" "}
               <Link to="/login" className="text-blue-600 hover:underline">
@@ -68,6 +64,17 @@ export default function RoomDetailPage() {
                 зарегистрироваться
               </Link>
             </p>
+          ) : role === "A" ? (
+            <p className="text-red-600">
+              У вас недостаточно прав для осуществления бронирования
+            </p>
+          ) : (
+            <button
+              onClick={() => setShowBookingModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Забронировать
+            </button>
           )}
         </div>
       </div>

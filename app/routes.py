@@ -261,19 +261,22 @@ def list_bookings():
         # остальные — только свои
         bookings = Booking.query.filter_by(user_id=user_id).all()
 
-    return jsonify([
-        {
+    users = {u.id: u.name for u in User.query.filter(User.id.in_([b.user_id for b in bookings])).all()}
+
+    result = []
+    for b in bookings:
+        result.append({
             'id': b.id,
-            'date': b.date.isoformat(),
             'room_id': b.room_id,
             'start_time': b.start_time.isoformat(),
             'end_time': b.end_time.isoformat(),
+            'date': b.date.isoformat(),  # если нужно
             'participants': b.participants,
             'created_at': b.created_at.isoformat(),
-            'user_id': b.user_id
-        }
-        for b in bookings
-    ])
+            'user_id': b.user_id,
+            'user_name': users.get(b.user_id, '—')
+        })
+    return jsonify(result)
 
 
 # 2. Отменить (удалить) бронирование
