@@ -10,24 +10,32 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     setError("");
-
     try {
-      const response = await fetch("http://localhost:5000/api/login", {
+      // 1) Логинимся, получаем токен и начальные данные
+      const res = await fetch("http://localhost:5000/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Неверный email или пароль");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Неверный email или пароль");
       }
+      const { access_token } = await res.json();
 
-      // передаем и user, и токен
-      login(data.user, data.access_token);
+      // 2) Получаем данные текущего пользователя, включая роль
+      const meRes = await fetch("http://localhost:5000/api/me", {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+      if (!meRes.ok) throw new Error("Не удалось получить данные профиля");
+      const user = await meRes.json();
+
+      // 3) Сохраняем и токен, и полную информацию в контекст
+      login(user, access_token);
+
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -40,7 +48,7 @@ export default function LoginPage() {
       <div className="bg-white p-8 rounded shadow-md w-full max-w-sm">
         <h2 className="text-xl font-semibold mb-4 text-center">Вход в систему</h2>
         {error && <div className="text-red-500 mb-4 text-center">{error}</div>}
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="email"
             placeholder="Email"

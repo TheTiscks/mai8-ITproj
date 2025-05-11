@@ -36,7 +36,9 @@ export default function MyBookingsPage() {
         );
 
         const map = {};
-        rooms.forEach(r => { map[r.id] = r; });
+        rooms.forEach(r => {
+          map[r.id] = r;
+        });
         setRoomsMap(map);
       })
       .catch(err => {
@@ -70,8 +72,11 @@ export default function MyBookingsPage() {
     const date = new Date(`${dateStr}T${timeStr}`);
     if (isNaN(date)) return `${dateStr} ${timeStr}`;
     return date.toLocaleString('ru-RU', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -88,16 +93,32 @@ export default function MyBookingsPage() {
         {!loading && !error && bookings.length === 0 && (
           <p>У вас пока нет бронирований.</p>
         )}
+
         <ul className="space-y-4">
           {bookings.map(b => {
             const room = roomsMap[b.room_id] || {};
             const canCancel = ALLOWED.includes(role) || b.user_id === user.id;
             return (
-              <li key={b.id} className="p-4 bg-white rounded shadow flex justify-between items-center">
+              <li
+                key={b.id}
+                className="p-4 bg-white rounded shadow flex justify-between items-center"
+              >
                 <div>
-                  <p><strong>Комната:</strong> {room.name || `#${b.room_id}`}</p>
-                  <p><strong>С:</strong> {formatDateTime(b.date, b.start_time)}</p>
-                  <p><strong>До:</strong> {formatDateTime(b.date, b.end_time)}</p>
+                  <p>
+                    <strong>Комната:</strong> {room.name || `#${b.room_id}`}
+                  </p>
+                  {/* Для роли C показываем имя пользователя */}
+                  {role === 'C' && (
+                    <p>
+                      <strong>Кто:</strong> {b.user_name}
+                    </p>
+                  )}
+                  <p>
+                    <strong>С:</strong> {formatDateTime(b.date, b.start_time)}
+                  </p>
+                  <p>
+                    <strong>До:</strong> {formatDateTime(b.date, b.end_time)}
+                  </p>
                 </div>
                 {canCancel && (
                   <button
