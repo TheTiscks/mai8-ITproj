@@ -1,4 +1,3 @@
-// src/components/Header.jsx
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../UserContext';
 import { useState } from 'react';
@@ -8,6 +7,9 @@ export default function Header() {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
+  // роль (A, B или C)
+  const role = user?.role?.toUpperCase();
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -15,25 +17,24 @@ export default function Header() {
 
   return (
     <header className="fixed top-0 left-0 w-full bg-blue-900 shadow p-4 flex justify-between items-center z-50">
-      {/* Логотип / название */}
       <div className="text-xl font-bold text-white">
         <Link to="/">LivnyOffice</Link>
       </div>
 
-      {/* Навигация */}
       <nav className="relative">
         {user ? (
           <div className="flex items-center space-x-4">
-            {/* Ссылка на Мои бронирования */}
-            <Link to="/my-bookings" className="text-white hover:underline">
-              Мои бронирования
-            </Link>
+            {/* Показываем «Мои бронирования» только для B и C */}
+            {(role === 'B' || role === 'C') && (
+              <Link to="/my-bookings" className="text-white hover:underline">
+                Мои бронирования
+              </Link>
+            )}
 
-            {/* Меню пользователя */}
             <div className="relative">
               <button
                 className="text-white hover:underline focus:outline-none"
-                onClick={() => setShowMenu(!showMenu)}
+                onClick={() => setShowMenu(v => !v)}
               >
                 {user.name}
               </button>
@@ -64,5 +65,5 @@ export default function Header() {
         )}
       </nav>
     </header>
-  );
+);
 }
