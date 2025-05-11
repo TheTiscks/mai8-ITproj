@@ -19,6 +19,11 @@ from . import db
 import sqlite3
 import base64
 import pytz
+from flask import send_file
+import io
+import matplotlib
+matplotlib.use('Agg')   # переключаемся на серверный бэкенд, без GUI
+import matplotlib.pyplot as plt
 
 # Инициализация Blueprints
 auth_bp = Blueprint('auth', __name__)
@@ -329,6 +334,40 @@ def get_availability(room_id):
         ]
     })
 
+@main_bp.route('/api/analytics', methods=['GET'])
+def analytics():
+    # Получаем все комнаты
+    rooms = Room.query.all()
+    today = datetime.now().date()
+
+    labels = []
+    percents = []
+
+    total_slots = 11  # количество возможных слотов (9–10, …, 19–20)
+
+    for r in rooms:
+        # Подсчитываем брони на сегодня по полю date
+        bookings_today = Booking.query.filter_by(room_id=r.id, date=today).count()
+        pct = bookings_today / total_slots * 100
+
+        labels.append(r.name)
+        percents.append(pct)
+
+    # Рисуем график
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.bar(labels, percents)
+    ax.set_ylabel('Процент загрузки, %')
+    ax.set_ylim(0, 100)
+    ax.set_title(f'Загрузка переговорных за {today.strftime("%d.%m.%Y")}')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+
+    # Отправляем PNG
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png')
+    buf.seek(0)
+    plt.close(fig)
+    return send_file(buf, mimetype='image/png')
 
 # Healthcheck
 @main_bp.route('/api/healthcheck')
