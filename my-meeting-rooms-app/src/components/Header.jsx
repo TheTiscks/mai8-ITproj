@@ -1,3 +1,4 @@
+// src/components/Header.jsx
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../UserContext';
 import { useState } from 'react';
@@ -6,9 +7,6 @@ export default function Header() {
   const { user, logout } = useUser();
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
-
-  // роль (A, B или C)
-  const role = user?.role?.toUpperCase();
 
   const handleLogout = () => {
     logout();
@@ -20,21 +18,21 @@ export default function Header() {
       <div className="text-xl font-bold text-white">
         <Link to="/">LivnyOffice</Link>
       </div>
-
-      <nav className="relative">
+      <nav className="relative flex items-center space-x-4">
+        {user && (
+          <Link to="/analytics" className="text-white hover:underline">
+            Аналитика
+          </Link>
+        )}
         {user ? (
-          <div className="flex items-center space-x-4">
-            {/* Показываем «Мои бронирования» только для B и C */}
-            {(role === 'B' || role === 'C') && (
-              <Link to="/my-bookings" className="text-white hover:underline">
-                Мои бронирования
-              </Link>
-            )}
-
+          <>
+            <Link to="/my-bookings" className="text-white hover:underline">
+              Мои бронирования
+            </Link>
             <div className="relative">
               <button
-                className="text-white hover:underline focus:outline-none"
-                onClick={() => setShowMenu(v => !v)}
+                className="text-white hover:underline"
+                onClick={() => setShowMenu(!showMenu)}
               >
                 {user.name}
               </button>
@@ -49,9 +47,9 @@ export default function Header() {
                 </div>
               )}
             </div>
-          </div>
+          </>
         ) : (
-          <div className="space-x-4">
+          <>
             <Link to="/login" className="text-white hover:underline">
               Войти
             </Link>
@@ -61,9 +59,9 @@ export default function Header() {
             >
               Регистрация
             </Link>
-          </div>
+          </>
         )}
       </nav>
     </header>
-);
+  );
 }
