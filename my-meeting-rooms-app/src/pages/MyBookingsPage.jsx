@@ -1,32 +1,46 @@
-// src/pages/MyBookingsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../UserContext';
 import Header from '../components/Header';
 
 export default function MyBookingsPage() {
   const { user } = useUser();
+
+  // данные и состояния
   const [bookings, setBookings] = useState([]);
   const [roomsMap, setRoomsMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Нормализуем роль
+  // пагинация
+  const [currentPage, setCurrentPage] = useState(1);
+  const bookingsPerPage = 5;
+  const [totalPages, setTotalPages] = useState(1);
+
+  // нормализуем роль
   const role = user && user.role
     ? String(user.role).trim().toUpperCase()
     : '';
 
-  useEffect(() => {
+  // Функция загрузки страницы бронирований
+  const fetchBookings = () => {
+    setLoading(true);
+    setError('');
     const token = localStorage.getItem('token');
-
-    fetch('http://localhost:5000/api/bookings', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    fetch(
+      `http://localhost:5000/api/bookings?page=${currentPage}&per_page=${bookingsPerPage}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
       .then(res => res.json())
       .then(async data => {
-        const list = Array.isArray(data) ? data : data.bookings || [];
-        setBookings(list);
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        // items — массив бронирований
+        setBookings(data.items || []);
+        setTotalPages(data.total_pages || 1);
 
-        const roomIds = [...new Set(list.map(b => b.room_id))];
+        // подгрузим комнаты
+        const roomIds = [...new Set((data.items || []).map(b => b.room_id))];
         const rooms = await Promise.all(
           roomIds.map(id =>
             fetch(`http://localhost:5000/api/rooms/${id}`)
@@ -34,19 +48,19 @@ export default function MyBookingsPage() {
               .catch(() => ({ id, name: `#${id}` }))
           )
         );
-
         const map = {};
-        rooms.forEach(r => {
-          map[r.id] = r;
-        });
+        rooms.forEach(r => { map[r.id] = r; });
         setRoomsMap(map);
       })
       .catch(err => {
         console.error(err);
-        setError('Ошибка при загрузке бронирований');
+        setError(err.message || 'Ошибка при загрузке бронирований');
       })
       .finally(() => setLoading(false));
-  }, [user]);
+  };
+
+  // при монтировании и при смене страницы — перезагружаем
+  useEffect(fetchBookings, [user, currentPage]);
 
   const handleCancel = id => {
     const token = localStorage.getItem('token');
@@ -56,6 +70,7 @@ export default function MyBookingsPage() {
     })
       .then(async res => {
         if (res.ok) {
+          // просто убираем из списка на клиенте
           setBookings(bs => bs.filter(b => b.id !== id));
         } else {
           const err = await res.json();
@@ -72,15 +87,11 @@ export default function MyBookingsPage() {
     const date = new Date(`${dateStr}T${timeStr}`);
     if (isNaN(date)) return `${dateStr} ${timeStr}`;
     return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     });
   };
 
-  // Укажем все роли, которым разрешена отмена
   const ALLOWED = ['B', 'C'];
 
   return (
@@ -88,6 +99,7 @@ export default function MyBookingsPage() {
       <Header />
       <div className="pt-20 max-w-4xl mx-auto p-4">
         <h1 className="text-2xl font-bold mb-4">Мои бронирования</h1>
+
         {loading && <p>Загрузка…</p>}
         {error && <p className="text-red-500">{error}</p>}
         {!loading && !error && bookings.length === 0 && (
@@ -104,21 +116,10 @@ export default function MyBookingsPage() {
                 className="p-4 bg-white rounded shadow flex justify-between items-center"
               >
                 <div>
-                  <p>
-                    <strong>Комната:</strong> {room.name || `#${b.room_id}`}
-                  </p>
-                  {/* Для роли C показываем имя пользователя */}
-                  {role === 'C' && (
-                    <p>
-                      <strong>Кто:</strong> {b.user_name}
-                    </p>
-                  )}
-                  <p>
-                    <strong>С:</strong> {formatDateTime(b.date, b.start_time)}
-                  </p>
-                  <p>
-                    <strong>До:</strong> {formatDateTime(b.date, b.end_time)}
-                  </p>
+                  <p><strong>Комната:</strong> {room.name || `#${b.room_id}`}</p>
+                  {role === 'C' && <p><strong>Кто:</strong> {b.user_name}</p>}
+                  <p><strong>С:</strong> {formatDateTime(b.date, b.start_time)}</p>
+                  <p><strong>До:</strong> {formatDateTime(b.date, b.end_time)}</p>
                 </div>
                 {canCancel && (
                   <button
@@ -132,6 +133,52 @@ export default function MyBookingsPage() {
             );
           })}
         </ul>
+
+        {/* Навигация по страницам */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex justify-center items-center space-x-2">
+            {/* Предыдущая */}
+            <button
+              onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded ${
+                currentPage === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 hover:bg-gray-300'
+              }`}
+            >
+              ‹
+            </button>
+
+            {/* Номера */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+              <button
+                key={num}
+                onClick={() => setCurrentPage(num)}
+                className={`px-3 py-1 rounded ${
+                  num === currentPage
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 hover:bg-gray-300'
+                }`}
+              >
+                {num}
+              </button>
+            ))}
+
+            {/* Следующая */}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 rounded ${
+                currentPage === totalPages
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 hover:bg-gray-300'
+              }`}
+            >
+              ›
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

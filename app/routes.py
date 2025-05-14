@@ -259,29 +259,59 @@ def list_bookings():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
 
-    if user.role == 'C':
-        # админ — видит все
-        bookings = Booking.query.all()
-    else:
-        # остальные — только свои
-        bookings = Booking.query.filter_by(user_id=user_id).all()
+    # Параметры пагинации
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+    except ValueError:
+        return jsonify({'error': 'Параметры page и per_page должны быть целыми числами'}), 400
+    if page < 1 or per_page < 1:
+        return jsonify({'error': 'page и per_page должны быть >= 1'}), 400
 
-    users = {u.id: u.name for u in User.query.filter(User.id.in_([b.user_id for b in bookings])).all()}
+    # Базовый запрос в зависимости от роли
+    base_q = Booking.query
+    if user.role != 'C':
+        base_q = base_q.filter_by(user_id=user_id)
 
-    result = []
-    for b in bookings:
-        result.append({
+    # Общее число записей
+    total_items = base_q.count()
+
+    # Выбираем именно нужную страницу
+    bookings_page = base_q.order_by(Booking.date.desc(), Booking.start_time)\
+                          .offset((page - 1) * per_page)\
+                          .limit(per_page)\
+                          .all()
+
+    # Собираем словарь пользователей для имён
+    user_ids = {b.user_id for b in bookings_page}
+    users = User.query.filter(User.id.in_(user_ids)).all()
+    names_map = {u.id: u.name for u in users}
+
+    # Формируем ответный список
+    items = []
+    for b in bookings_page:
+        items.append({
             'id': b.id,
             'room_id': b.room_id,
+            'date': b.date.isoformat(),
             'start_time': b.start_time.isoformat(),
             'end_time': b.end_time.isoformat(),
-            'date': b.date.isoformat(),  # если нужно
             'participants': b.participants,
             'created_at': b.created_at.isoformat(),
             'user_id': b.user_id,
-            'user_name': users.get(b.user_id, '—')
+            'user_name': names_map.get(b.user_id, '—')
         })
-    return jsonify(result)
+
+    total_pages = (total_items + per_page - 1) // per_page
+
+    return jsonify({
+        'page': page,
+        'per_page': per_page,
+        'total_items': total_items,
+        'total_pages': total_pages,
+        'items': items
+    })
+
 
 
 # 2. Отменить (удалить) бронирование
