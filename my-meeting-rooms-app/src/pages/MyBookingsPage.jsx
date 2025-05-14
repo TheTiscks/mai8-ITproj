@@ -1,4 +1,3 @@
-// src/pages/MyBookingsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../UserContext';
 import Header from '../components/Header';
@@ -10,7 +9,11 @@ export default function MyBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Нормализуем роль
+  // пагинация
+  const [currentPage, setCurrentPage] = useState(1);
+  const bookingsPerPage = 5;
+
+  // нормализуем роль
   const role = user && user.role
     ? String(user.role).trim().toUpperCase()
     : '';
@@ -80,8 +83,14 @@ export default function MyBookingsPage() {
     });
   };
 
-  // Укажем все роли, которым разрешена отмена
+  // роли, которым разрешена отмена
   const ALLOWED = ['B', 'C'];
+
+  // вычисляем страницы
+  const indexOfLast = currentPage * bookingsPerPage;
+  const indexOfFirst = indexOfLast - bookingsPerPage;
+  const currentBookings = bookings.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(bookings.length / bookingsPerPage);
 
   return (
     <>
@@ -95,7 +104,7 @@ export default function MyBookingsPage() {
         )}
 
         <ul className="space-y-4">
-          {bookings.map(b => {
+          {currentBookings.map(b => {
             const room = roomsMap[b.room_id] || {};
             const canCancel = ALLOWED.includes(role) || b.user_id === user.id;
             return (
@@ -104,21 +113,12 @@ export default function MyBookingsPage() {
                 className="p-4 bg-white rounded shadow flex justify-between items-center"
               >
                 <div>
-                  <p>
-                    <strong>Комната:</strong> {room.name || `#${b.room_id}`}
-                  </p>
-                  {/* Для роли C показываем имя пользователя */}
+                  <p><strong>Комната:</strong> {room.name || `#${b.room_id}`}</p>
                   {role === 'C' && (
-                    <p>
-                      <strong>Кто:</strong> {b.user_name}
-                    </p>
+                    <p><strong>Кто:</strong> {b.user_name}</p>
                   )}
-                  <p>
-                    <strong>С:</strong> {formatDateTime(b.date, b.start_time)}
-                  </p>
-                  <p>
-                    <strong>До:</strong> {formatDateTime(b.date, b.end_time)}
-                  </p>
+                  <p><strong>С:</strong> {formatDateTime(b.date, b.start_time)}</p>
+                  <p><strong>До:</strong> {formatDateTime(b.date, b.end_time)}</p>
                 </div>
                 {canCancel && (
                   <button
@@ -132,6 +132,40 @@ export default function MyBookingsPage() {
             );
           })}
         </ul>
+
+        {/* Навигация по страницам */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex justify-center items-center space-x-2">
+            {/* Кнопка «предыдущая» */}
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'}`}
+            >
+              ‹
+            </button>
+
+            {/* Номера страниц */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+              <button
+                key={num}
+                onClick={() => setCurrentPage(num)}
+                className={`px-3 py-1 rounded ${num === currentPage ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+              >
+                {num}
+              </button>
+            ))}
+
+            {/* Кнопка «следующая» */}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 rounded ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'}`}
+            >
+              ›
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
